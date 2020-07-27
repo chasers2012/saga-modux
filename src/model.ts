@@ -54,9 +54,18 @@ export function model(nameSpace, modelObj, initState) {
     Object.keys(newModel).forEach((key) => {
       action[key] = newModel[key].action;
     });
-    newModel.action = action;
-    newModel.initState = initState;
-    newModel.nameSpace = nameSpace;
+    Object.defineProperty(newModel,'action',{
+      value:action,
+      enumerable: false
+    });
+    Object.defineProperty(newModel,'initState',{
+      value:initState,
+      enumerable: false
+    });
+    Object.defineProperty(newModel,'nameSpace',{
+      value:nameSpace,
+      enumerable: false
+    });
 
     return newModel;
   } catch (e) {
