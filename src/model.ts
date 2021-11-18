@@ -66,7 +66,17 @@ export function model(nameSpace, modelObj, initState) {
       value:nameSpace,
       enumerable: false
     });
-
+    Object.defineProperty(newModel, 'select', {
+      value: function(s) {
+        if (!this._rootSelector) {
+          throw new Error(`model '${this.nameSpace}' should be combined with 'combineModels()' before using .select method.`);
+        }
+        return this._rootSelector(s)[this.nameSpace];
+      }.bind(newModel),
+      enumerable: false,
+      writable: false,
+      configurable: false
+    });
     return newModel;
   } catch (e) {
     console.error(e);
@@ -78,7 +88,12 @@ export function combineModels(models, rootSelector = s => s) {
   const modelInitStates = {};
   const modelRootSagas = {};
   models.forEach((model) => {
-    model.select = (s) => rootSelector(s)[model.nameSpace];
+    Object.defineProperty(model, '_rootSelector', {
+      value: rootSelector,
+      enumerable: false,
+      writable: false,
+      configurable: false
+    });
     modelInitStates[model.nameSpace] = model.initState;
     modelRootSagas[model.nameSpace] = model.root();
   });
