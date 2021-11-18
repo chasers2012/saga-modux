@@ -1,6 +1,6 @@
 {
   "name": "saga-modux",
-  "version": "0.2.2",
+  "version": "0.3.0-0",
   "description": "",
   "main": "./dist/index.js",
   "files": [
