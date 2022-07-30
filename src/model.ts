@@ -1,7 +1,7 @@
 import { all } from "redux-saga/effects";
 import { writingActions } from './sagaHelpers';
 
-export function model(nameSpace, modelObj, initState) {
+export function model<T extends {root: ()=>Generator,[key: string]: any}>(nameSpace: string, modelObj:T, initState?: any) {
   try {
     const newModel = {};
     Object.keys(modelObj).forEach((key) => {
