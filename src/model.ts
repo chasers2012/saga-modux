@@ -1,13 +1,27 @@
 import { all } from "redux-saga/effects";
 import { writingActions } from './sagaHelpers';
+import { Action } from "redux";
 
-export function model<T extends {root: ()=>Generator,[key: string]: any}>(nameSpace: string, modelObj:T, initState?: any) {
+function createAction(nameSpace, actionName) {
+  const actionType = nameSpace + '_' + actionName;
+  this[actionName] = this[actionName].bind(this);
+  this[actionName].actionType = actionType;
+  this[actionName].action = (data) => ({
+    type: actionType,
+    ...data
+  });
+}
+
+export function model<T extends { root: () => Generator, [key: string]: any }, S = any>(nameSpace: string,
+  modelObj: T,
+  initState?: S
+) {
   try {
     const newModel = {};
     Object.keys(modelObj).forEach((key) => {
       if (key === 'root') {
         if (typeof modelObj[key] !== 'function') {
-          console.error('root should be a function or generator');
+          throw new Error(`property 'root' of model ${nameSpace} should be a function or generator`);
         }
         Object.defineProperty(newModel, key, {
           value: modelObj[key].bind(newModel),
@@ -19,13 +33,7 @@ export function model<T extends {root: ()=>Generator,[key: string]: any}>(nameSp
       }
       if (typeof modelObj[key] === 'function') {
         if (!/^_/.test(key)) {
-          const actionType = nameSpace + '_' + key;
-          newModel[key] = modelObj[key].bind(newModel);
-          newModel[key].actionType = actionType;
-          newModel[key].action = (data) => ({
-            type: actionType,
-            ...data
-          });
+          createAction.call(this, nameSpace, key)
         } else {
           Object.defineProperty(newModel, key, {
             value: modelObj[key].bind(newModel),
@@ -34,14 +42,16 @@ export function model<T extends {root: ()=>Generator,[key: string]: any}>(nameSp
             configurable: true
           });
         }
-      } else {
-        Object.defineProperty(newModel, key, {
-          value: modelObj[key],
-          writable: true,
-          enumerable: false,
-          configurable: true
-        });
+        return;
       }
+
+      Object.defineProperty(newModel, key, {
+        value: modelObj[key],
+        writable: true,
+        enumerable: false,
+        configurable: true
+      });
+
     });
     Object.defineProperty(newModel, 'nameSpace', {
       value: nameSpace,
@@ -54,22 +64,22 @@ export function model<T extends {root: ()=>Generator,[key: string]: any}>(nameSp
     Object.keys(newModel).forEach((key) => {
       action[key] = newModel[key].action;
     });
-    Object.defineProperty(newModel,'action',{
-      value:action,
+    Object.defineProperty(newModel, 'action', {
+      value: action,
       enumerable: false
     });
-    Object.defineProperty(newModel,'initState',{
-      value:initState,
+    Object.defineProperty(newModel, 'initState', {
+      value: initState,
       enumerable: false
     });
-    Object.defineProperty(newModel,'nameSpace',{
-      value:nameSpace,
+    Object.defineProperty(newModel, 'nameSpace', {
+      value: nameSpace,
       enumerable: false
     });
     Object.defineProperty(newModel, 'select', {
-      value: function(s) {
+      value: function (s) {
         if (!this._rootSelector) {
-          throw new Error(`model '${this.nameSpace}' should be combined with 'combineModels()' before using .select method.`);
+          throw new Error(`model '${this.nameSpace}' should be added to 'combineModels()' before using .select method.`);
         }
         return this._rootSelector(s)[this.nameSpace];
       }.bind(newModel),
@@ -77,7 +87,12 @@ export function model<T extends {root: ()=>Generator,[key: string]: any}>(nameSp
       writable: false,
       configurable: false
     });
-    return newModel;
+    return newModel as T & {
+      action: {
+        [key in keyof T]: (...args: Parameters<T[key]>) => Action
+      },
+      select: (store: any) => S
+    };
   } catch (e) {
     console.error(e);
     throw e;
@@ -117,5 +132,5 @@ export function combineModels(models, rootSelector = s => s) {
     }
   }
 
-  return { reducer, saga }
+  return { reducer, saga: saga as () => Generator<any> }
 }
