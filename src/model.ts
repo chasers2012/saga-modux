@@ -2,16 +2,6 @@ import { all } from "redux-saga/effects";
 import { writingActions } from './sagaHelpers';
 import { Action } from "redux";
 
-function createAction(nameSpace, actionName) {
-  const actionType = nameSpace + '_' + actionName;
-  this[actionName] = this[actionName].bind(this);
-  this[actionName].actionType = actionType;
-  this[actionName].action = (data) => ({
-    type: actionType,
-    ...data
-  });
-}
-
 export function model<T extends { root: () => Generator, [key: string]: any }, S = any>(nameSpace: string,
   modelObj: T,
   initState?: S
@@ -33,7 +23,13 @@ export function model<T extends { root: () => Generator, [key: string]: any }, S
       }
       if (typeof modelObj[key] === 'function') {
         if (!/^_/.test(key)) {
-          createAction.call(this, nameSpace, key)
+          const actionType = nameSpace + '_' + key;
+          newModel[key] = modelObj[key].bind(newModel);
+          newModel[key].actionType = actionType;
+          newModel[key].action = (data) => ({
+            type: actionType,
+            ...data
+          });
         } else {
           Object.defineProperty(newModel, key, {
             value: modelObj[key].bind(newModel),
